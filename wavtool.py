@@ -18,6 +18,7 @@ def main():
     parser.add_argument("--convert-out", dest="convert_out", help="Converted output folder")
     parser.add_argument("--clean", action="store_true",
                         help="Delete existing output files in chop/convert folders")
+    parser.add_argument("--threshold", dest="threshold", help="Chop silence threshold (dB, e.g. -40)")
     args, _ = parser.parse_known_args()
 
     chop_out = args.chop_out if args.chop_out else "chopped"
@@ -29,6 +30,8 @@ def main():
         chop_cmd += ["-i", args.input_path]
     if args.prefix:
         chop_cmd += ["--prefix", args.prefix]
+    if args.threshold:
+        chop_cmd += ["--threshold", args.threshold]
     if args.clean:
         chop_cmd += ["--clean"]
     run(chop_cmd)

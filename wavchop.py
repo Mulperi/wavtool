@@ -54,6 +54,8 @@ def main():
                         help="Use defaults and skip prompts")
     parser.add_argument("--clean", action="store_true",
                         help="Delete existing output files before chopping")
+    parser.add_argument("--threshold", dest="threshold",
+                        help="Silence threshold dB (e.g. -40)")
     args, _ = parser.parse_known_args()
 
     check_sox()
@@ -103,17 +105,20 @@ def main():
     os.makedirs(out, exist_ok=True)
 
     if args.preset:
-        thresh = "-30"
+        thresh = "-40"
         min_sil = "0.05"
         keep_sil = False
     else:
         thresh = ask_choice("Silence threshold (dB):",
             {"1":"-30","2":"-40","3":"-50","4":"-60"},
-            default_key="1")
+            default_key="2")
         min_sil = ask_choice("Minimum silence length (sec):",
             {"1":"0.05","2":"0.1","3":"0.2","4":"0.5"},
             default_key="1")
         keep_sil = ask_yes_no("Keep the silence at the end of each chop?", default_yes=False)
+
+    if args.threshold:
+        thresh = args.threshold
 
     default_prefix = "chop"
     prefix_prompt = f"Output name prefix [{default_prefix}]: "

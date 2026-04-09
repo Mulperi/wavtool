@@ -63,7 +63,55 @@ def clean_name(filename):
 # ----------------------------
 # MOD EXPORT (simple container)
 # ----------------------------
-def wav_to_mod_sample(wav_path):
+def find_loop_points(samples, rate_hz):
+    n = len(samples)
+    if n < 200:
+        return None
+
+    zero = []
+    for i in range(1, n):
+        a = samples[i - 1]
+        b = samples[i]
+        if (a <= 0 and b > 0) or (a >= 0 and b < 0):
+            zero.append(i)
+
+    if len(zero) < 2:
+        return None
+
+    min_len = max(int(rate_hz * 0.05), 200)
+    max_len = min(n - 1, int(rate_hz * 2.0))
+    if max_len <= min_len:
+        return None
+
+    end_cut = n - max(512, n // 10)
+    end_candidates = [i for i in zero if i >= end_cut]
+    start_candidates = [i for i in zero if i <= n - min_len]
+
+    if not end_candidates or not start_candidates:
+        return None
+
+    best = None
+    best_score = None
+    for end in end_candidates:
+        max_start = end - min_len
+        min_start = max(0, end - max_len)
+        for start in start_candidates:
+            if start < min_start or start > max_start:
+                continue
+            window = min(64, n - end - 1, n - start - 1)
+            if window < 8:
+                continue
+            score = 0
+            for k in range(window):
+                score += abs(samples[start + k] - samples[end + k])
+            if best_score is None or score < best_score:
+                best_score = score
+                best = (start, end - start)
+
+    return best
+
+
+def wav_to_mod_sample(wav_path, loop_find=False, rate_hz=11025):
     with wave.open(wav_path, "rb") as wf:
         nch = wf.getnchannels()
         sampwidth = wf.getsampwidth()
@@ -111,7 +159,21 @@ def wav_to_mod_sample(wav_path):
     if len(data) % 2 != 0:
         data += b"\x00"
 
-    return data
+    loop_start = 0
+    loop_len = 0
+    if loop_find:
+        loop = find_loop_points(samples, rate_hz)
+        if loop:
+            loop_start, loop_len = loop
+            if loop_start + loop_len > len(data):
+                loop_start = 0
+                loop_len = 0
+
+    return {
+        "data": data,
+        "loop_start": loop_start,
+        "loop_len": loop_len
+    }
 
 
 def write_mod(output_path, samples):
@@ -138,10 +200,18 @@ def write_mod(output_path, samples):
         header[offset] = 64  # volume
         offset += 1
 
-        # No loop: start 0, length 1 word (minimum)
-        header[offset:offset+2] = (0).to_bytes(2, "big")
+        # Loop points (in words). If none, use length 1 word.
+        loop_start = s.get("loop_start", 0)
+        loop_len = s.get("loop_len", 0)
+        if loop_len < 2:
+            loop_start_words = 0
+            loop_len_words = 1
+        else:
+            loop_start_words = loop_start // 2
+            loop_len_words = max(1, loop_len // 2)
+        header[offset:offset+2] = loop_start_words.to_bytes(2, "big")
         offset += 2
-        header[offset:offset+2] = (1).to_bytes(2, "big")
+        header[offset:offset+2] = loop_len_words.to_bytes(2, "big")
         offset += 2
 
     # Pad remaining sample headers if fewer than 31
@@ -331,7 +401,7 @@ def main():
             "mono_mode": "Mix (L+R combined)",
             "fade_mode": "Very short (5 ms)",
             "trim_silence": True,
-            "trim_threshold_db": -40,
+            "trim_threshold_db": -30,
             "trim_min_silence": 0.05,
             "normalize": True,
             "gain_db": None,
@@ -339,6 +409,7 @@ def main():
             "treble_gain_db": 3,
             "treble_freq_hz": 5000,
             "speed_up_2x": True,
+            "loop_find": True,
             "sox_quiet": True,
             "verbose": False
         }
@@ -355,7 +426,7 @@ def main():
                 "6":"22050",
                 "7":"44100"
             },
-            default_key="1")
+            default_key="4")
 
         bits = ask_choice("Bit depth:",
             {"1":"8-bit","2":"16-bit"},
@@ -376,14 +447,14 @@ def main():
                 "3":"Short (10 ms)",
                 "4":"Medium (25 ms)"
             },
-            default_key="2")
+            default_key="1")
 
         trim_silence = ask_yes_no("Trim leading/trailing silence?", default_yes=True)
         trim_threshold_db = -40
         if trim_silence:
             th = ask_choice("Trim threshold (dB):",
                 {"1":"-30","2":"-40","3":"-50","4":"-60"},
-                default_key="2")
+                default_key="1")
             trim_threshold_db = int(th)
 
         normalize = ask_yes_no("Normalize to full scale?", default_yes=True)
@@ -394,7 +465,7 @@ def main():
                 default_key="2")
             gain_db = int(g)
 
-        treble_boost = ask_yes_no("High-frequency boost?", default_yes=True)
+        treble_boost = ask_yes_no("High-frequency boost?", default_yes=False)
         treble_gain_db = 0
         treble_freq_hz = 5000
         if treble_boost:
@@ -408,6 +479,7 @@ def main():
             treble_freq_hz = int(tf)
 
         speed_up_2x = ask_yes_no("Speed up 2x (octave up, half length)?", default_yes=True)
+        loop_find = ask_yes_no("Find loop points (basic zero-crossing)?", default_yes=True)
 
         cfg = {
             "rate": int(rate.split()[0]),
@@ -423,6 +495,7 @@ def main():
             "treble_gain_db": treble_gain_db,
             "treble_freq_hz": treble_freq_hz,
             "speed_up_2x": speed_up_2x,
+            "loop_find": loop_find,
             "sox_quiet": ask_yes_no("Silence SoX warnings?", default_yes=True),
             "verbose": ask_yes_no("Verbose output?", default_yes=False)
         }
@@ -453,10 +526,14 @@ def main():
 
             if export_mod:
                 try:
-                    data = wav_to_mod_sample(out_path)
+                    sample = wav_to_mod_sample(
+                        out_path,
+                        loop_find=cfg.get("loop_find"),
+                        rate_hz=cfg["rate"]
+                    )
                     mod_samples.append({
                         "name": name,
-                        "data": data
+                        **sample
                     })
                 except Exception as e:
                     print("MOD SKIP:", name, "-", e)

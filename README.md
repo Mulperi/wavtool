@@ -35,6 +35,7 @@ Flags:
 - `--prefix`: output name prefix for chops (e.g., `drums-1.wav`)
 - `--chop-out`: output folder for chopped files (default `chopped`)
 - `--convert-out`: output folder for converted files (default `converted`)
+- `--threshold`: silence threshold in dB for chopping (e.g., `-40`)
 - `--clean`: delete output folders before running
 
 ## wavchop.py
@@ -58,6 +59,7 @@ Flags:
 - `-i/--input`: input WAV file
 - `-o/--output`: output folder
 - `--prefix`: output name prefix
+- `--threshold`: silence threshold in dB (e.g., `-40`)
 - `-p/--preset`: use defaults and skip prompts
 - `--clean`: delete output folder before slicing
 
@@ -68,11 +70,12 @@ Amiga preset defaults:
 - Sample rate: `16574 Hz (PAL C-4)`
 - Bit depth: `8-bit`
 - Mono mix: L+R
-- Fade: very short (5 ms)
-- Trim silence: on (`-40 dB`, `0.05 s`)
+- Fade: off
+- Trim silence: on (`-30 dB`, `0.05 s`)
 - Normalize: on
 - Treble boost: off
 - Speed up 2x (octave up, half length): on
+- Loop find (basic zero-crossing): on
 - SoX warnings: silenced
 - MOD export: on
 
@@ -91,4 +94,4 @@ Flags:
 ## Notes
 - If trimmed output becomes empty, `wav2mod.py` retries once without trimming.
 - PT2/ProTracker playback does not store sample rate; pitch depends on the note you play.
-
+- Tip: If your samples have long decays, try lowering the chop threshold (e.g., `--threshold -50`) to avoid cutting tails too early.
