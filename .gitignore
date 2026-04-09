@@ -2,3 +2,4 @@ chopped
 converted
 *.wav
 *.pyc
+.DS_Store

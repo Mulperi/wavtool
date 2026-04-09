@@ -177,6 +177,43 @@ def wav_to_mod_sample(wav_path, loop_find=False, rate_hz=11025):
     }
 
 
+def wav_to_mod_sample_raw(wav_path, loop_find=False):
+    with wave.open(wav_path, "rb") as wf:
+        nch = wf.getnchannels()
+        sampwidth = wf.getsampwidth()
+        rate = wf.getframerate()
+        nframes = wf.getnframes()
+        data = wf.readframes(nframes)
+
+    if nch != 1:
+        raise ValueError("RAW pack requires mono WAV")
+    if sampwidth != 1:
+        raise ValueError("RAW pack requires 8-bit WAV")
+
+    # WAV 8-bit is unsigned; MOD expects signed
+    samples = [b - 128 for b in data]
+    data = bytes((s + 256) % 256 for s in samples)
+
+    if len(data) % 2 != 0:
+        data += b"\x00"
+
+    loop_start = 0
+    loop_len = 0
+    if loop_find:
+        loop = find_loop_points(samples, rate)
+        if loop:
+            loop_start, loop_len = loop
+            if loop_start + loop_len > len(data):
+                loop_start = 0
+                loop_len = 0
+
+    return {
+        "data": data,
+        "loop_start": loop_start,
+        "loop_len": loop_len
+    }
+
+
 def write_mod(output_path, samples):
     # samples: list of dicts with keys {name, data}
     header = bytearray(1084)
@@ -432,6 +469,8 @@ def main():
                         help="Export MOD sample container (on/off)")
     parser.add_argument("--report-peak", dest="report_peak", choices=["on", "off"],
                         help="Report peak level of converted WAVs (on/off)")
+    parser.add_argument("--raw-pack", action="store_true",
+                        help="Pack input WAVs into MOD without SoX processing")
     parser.add_argument("--silent", action="store_true",
                         help="Suppress output (print only Done.)")
     args, _ = parser.parse_known_args()
@@ -446,14 +485,14 @@ def main():
 
     if args.input_path:
         inp = args.input_path
-    elif args.preset:
+    elif args.preset or args.raw_pack:
         inp = "."
     else:
         inp = input("Input folder (. = current folder): ").strip()
 
     if args.output_path:
         out = args.output_path
-    elif args.preset:
+    elif args.preset or args.raw_pack:
         out = "converted"
     else:
         out = input("Output folder [converted]: ").strip()
@@ -475,7 +514,7 @@ def main():
     # ----------------------------
     # preset
     # ----------------------------
-    if args.preset:
+    if args.preset or args.raw_pack:
         preset = True
     else:
         preset = ask_yes_no("Use ProTracker-safe preset?", default_yes=True)
@@ -672,10 +711,13 @@ def main():
 
     if args.export_mod:
         export_mod = (args.export_mod == "on")
-    elif args.preset:
+    elif args.preset or args.raw_pack:
         export_mod = True
     else:
         export_mod = ask_yes_no("Export MOD sample container?", default_yes=True)
+
+    if args.raw_pack and not export_mod and not args.silent:
+        say("RAW pack requires MOD export; enable --export-mod on")
 
     mod_samples = []
 
@@ -693,24 +735,43 @@ def main():
         out_path = os.path.join(out, name + ".wav")
 
         try:
-            run_sox(in_path, out_path, cfg)
-            say(f"OK: {name}")
-            if cfg.get("report_peak") and not cfg.get("silent"):
-                report_peak_dbfs(out_path, name)
+            if args.raw_pack:
+                if export_mod:
+                    try:
+                        sample = wav_to_mod_sample_raw(
+                            in_path,
+                            loop_find=cfg.get("loop_find")
+                        )
+                        mod_samples.append({
+                            "name": name,
+                            **sample
+                        })
+                        say(f"OK: {name}")
+                        if cfg.get("report_peak") and not cfg.get("silent"):
+                            report_peak_dbfs(in_path, name)
+                    except Exception as e:
+                        say(f"RAW SKIP: {name} - {e}")
+                else:
+                    say(f"SKIP: {name} (raw-pack requires MOD export)")
+            else:
+                run_sox(in_path, out_path, cfg)
+                say(f"OK: {name}")
+                if cfg.get("report_peak") and not cfg.get("silent"):
+                    report_peak_dbfs(out_path, name)
 
-            if export_mod:
-                try:
-                    sample = wav_to_mod_sample(
-                        out_path,
-                        loop_find=cfg.get("loop_find"),
-                        rate_hz=cfg["rate"]
-                    )
-                    mod_samples.append({
-                        "name": name,
-                        **sample
-                    })
-                except Exception as e:
-                    say(f"MOD SKIP: {name} - {e}")
+                if export_mod:
+                    try:
+                        sample = wav_to_mod_sample(
+                            out_path,
+                            loop_find=cfg.get("loop_find"),
+                            rate_hz=cfg["rate"]
+                        )
+                        mod_samples.append({
+                            "name": name,
+                            **sample
+                        })
+                    except Exception as e:
+                        say(f"MOD SKIP: {name} - {e}")
 
         except subprocess.CalledProcessError:
             say(f"FAIL: {name}")

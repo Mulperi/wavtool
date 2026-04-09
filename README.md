@@ -36,36 +36,41 @@ Runs:
 1. `wavchop.py` (auto defaults, no prompts)
 2. `wav2mod.py` (ProTracker preset, no prompts)
 
-Flags:
+Flags (wavtool-specific):
 - `-i/--input`: input file for chopping
 - `--prefix`: output name prefix for chops (e.g., `drums-1.wav`)
 - `--chop-out`: output folder for chopped files (default `chopped`)
 - `--convert-out`: output folder for converted files (default `converted`)
-- `--threshold`: silence threshold in dB for chopping (e.g., `-40`)
-- `--min-sil`: minimum silence length for chopping (e.g., `0.05`)
-- `--keep-sil`: keep trailing silence on chops (`on` or `off`)
-- `--chop-verbose`: verbose SoX output for chopping (`on` or `off`)
-- `--remove-empty`: remove empty chopped slices (`on` or `off`)
-- `--loops`: loop-point detection for MOD export (`on` or `off`)
-- `--rate`: sample rate for conversion (e.g., `16574`)
-- `--bits`: bit depth for conversion (`8` or `16`)
-- `--mono`: mono mode for conversion (`mix`, `left`, `right`)
-- `--fade`: anti-click envelope for conversion (`off`, `veryshort`, `short`, `medium`)
-- `--trim`: trim silence for conversion (`on` or `off`)
-- `--trim-threshold`: trim threshold dB for conversion (e.g., `-30`)
-- `--trim-min`: trim minimum silence length for conversion (e.g., `0.05`)
-- `--normalize`: normalize for conversion (`on` or `off`)
-- `--gain`: gain dB for conversion (used if normalize off)
-- `--treble`: treble boost for conversion (`on` or `off`)
-- `--treble-gain`: treble boost dB for conversion
-- `--treble-freq`: treble center frequency Hz for conversion
-- `--speed`: speed up 2x for conversion (`on` or `off`)
-- `--sox-quiet`: silence SoX warnings for conversion (`on` or `off`)
-- `--verbose`: verbose output for conversion (`on` or `off`)
-- `--export-mod`: export MOD container (`on` or `off`)
-- `--report-peak`: report peak level of converted WAVs (`on` or `off`)
-- `--silent`: suppress output (print only Done.)
 - `--clean`: delete output folders before running
+- `--silent`: suppress output (print only Done.)
+
+Forwarded to `wavchop.py`:
+- `--threshold`
+- `--min-sil`
+- `--keep-sil`
+- `--chop-verbose`
+- `--remove-empty`
+
+Forwarded to `wav2mod.py`:
+- `--loops`
+- `--raw-pack`
+- `--rate`
+- `--bits`
+- `--mono`
+- `--fade`
+- `--trim`
+- `--trim-threshold`
+- `--trim-min`
+- `--normalize`
+- `--gain`
+- `--treble`
+- `--treble-gain`
+- `--treble-freq`
+- `--speed`
+- `--sox-quiet`
+- `--verbose`
+- `--export-mod`
+- `--report-peak`
 
 ## wavchop.py
 Auto-slices based on silence detection.
@@ -117,6 +122,7 @@ Examples:
 ```bash
 python3 wav2mod.py
 python3 wav2mod.py -i chopped -o converted -p --clean
+python3 wav2mod.py --raw-pack -i bestsamples
 ```
 
 Flags:
@@ -124,6 +130,7 @@ Flags:
 - `-o/--output`: output folder
 - `-p/--preset`: use preset and skip prompts
 - `--loops`: loop-point detection for MOD export (`on` or `off`)
+- `--raw-pack`: pack input WAVs into MOD without SoX processing
 - `--rate`: sample rate (e.g., `16574`)
 - `--bits`: bit depth (`8` or `16`)
 - `--mono`: mono mode (`mix`, `left`, `right`)
@@ -148,3 +155,5 @@ Flags:
 - If trimmed output becomes empty, `wav2mod.py` retries once without trimming.
 - PT2/ProTracker playback does not store sample rate; pitch depends on the note you play.
 - Tip: If your samples have long decays, try lowering the chop threshold (e.g., `--threshold -50`) to avoid cutting tails too early.
+- Tip: If you are chopping a file with fast drum hits and you have problem separating each hit, try settings: `python3 wavtool.py --clean --threshold -25 --min-sil 0.01`
+- Tip: Use `--raw-pack` when your input WAVs are already mono 8-bit and you only want a MOD pack (no conversion).

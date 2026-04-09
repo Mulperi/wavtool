@@ -58,6 +58,8 @@ def main():
                         help="Export MOD container")
     parser.add_argument("--report-peak", dest="report_peak", choices=["on", "off"],
                         help="Report peak level of converted WAVs (on/off)")
+    parser.add_argument("--raw-pack", action="store_true",
+                        help="Pack input WAVs into MOD without SoX processing")
     parser.add_argument("--silent", action="store_true",
                         help="Suppress output (print only Done. at end)")
     args, _ = parser.parse_known_args()
@@ -125,6 +127,8 @@ def main():
         conv_cmd += ["--export-mod", args.export_mod]
     if args.report_peak:
         conv_cmd += ["--report-peak", args.report_peak]
+    if args.raw_pack:
+        conv_cmd += ["--raw-pack"]
     if args.silent:
         conv_cmd += ["--silent"]
     if args.clean:
