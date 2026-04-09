@@ -25,6 +25,12 @@ Optional:
 python3 wavtool.py --clean --prefix drums
 ```
 
+Without any flags, `wavtool.py` will:
+- Use the first `.wav` found in the current folder (for chopping)
+- Chop into `chopped/` using `wavchop.py` preset defaults
+- Convert into `converted/` using `wav2mod.py` preset defaults
+- Export a MOD sample pack
+
 ## wavtool.py
 Runs:
 1. `wavchop.py` (auto defaults, no prompts)
@@ -36,6 +42,23 @@ Flags:
 - `--chop-out`: output folder for chopped files (default `chopped`)
 - `--convert-out`: output folder for converted files (default `converted`)
 - `--threshold`: silence threshold in dB for chopping (e.g., `-40`)
+- `--loops`: loop-point detection for MOD export (`on` or `off`)
+- `--rate`: sample rate for conversion (e.g., `16574`)
+- `--bits`: bit depth for conversion (`8` or `16`)
+- `--mono`: mono mode for conversion (`mix`, `left`, `right`)
+- `--fade`: anti-click envelope for conversion (`off`, `veryshort`, `short`, `medium`)
+- `--trim`: trim silence for conversion (`on` or `off`)
+- `--trim-threshold`: trim threshold dB for conversion (e.g., `-30`)
+- `--trim-min`: trim minimum silence length for conversion (e.g., `0.05`)
+- `--normalize`: normalize for conversion (`on` or `off`)
+- `--gain`: gain dB for conversion (used if normalize off)
+- `--treble`: treble boost for conversion (`on` or `off`)
+- `--treble-gain`: treble boost dB for conversion
+- `--treble-freq`: treble center frequency Hz for conversion
+- `--speed`: speed up 2x for conversion (`on` or `off`)
+- `--sox-quiet`: silence SoX warnings for conversion (`on` or `off`)
+- `--verbose`: verbose output for conversion (`on` or `off`)
+- `--export-mod`: export MOD container (`on` or `off`)
 - `--clean`: delete output folders before running
 
 ## wavchop.py
@@ -60,6 +83,10 @@ Flags:
 - `-o/--output`: output folder
 - `--prefix`: output name prefix
 - `--threshold`: silence threshold in dB (e.g., `-40`)
+- `--min-sil`: minimum silence length in seconds (e.g., `0.05`)
+- `--keep-sil`: keep trailing silence (`on` or `off`)
+- `--verbose`: verbose SoX output (`on` or `off`)
+- `--remove-empty`: remove empty slices (`on` or `off`)
 - `-p/--preset`: use defaults and skip prompts
 - `--clean`: delete output folder before slicing
 
@@ -89,6 +116,23 @@ Flags:
 - `-i/--input`: input folder
 - `-o/--output`: output folder
 - `-p/--preset`: use preset and skip prompts
+- `--loops`: loop-point detection for MOD export (`on` or `off`)
+- `--rate`: sample rate (e.g., `16574`)
+- `--bits`: bit depth (`8` or `16`)
+- `--mono`: mono mode (`mix`, `left`, `right`)
+- `--fade`: anti-click envelope (`off`, `veryshort`, `short`, `medium`)
+- `--trim`: trim silence (`on` or `off`)
+- `--trim-threshold`: trim threshold dB (e.g., `-30`)
+- `--trim-min`: trim minimum silence length in seconds (e.g., `0.05`)
+- `--normalize`: normalize (`on` or `off`)
+- `--gain`: gain in dB (used if normalize off)
+- `--treble`: high-frequency boost (`on` or `off`)
+- `--treble-gain`: treble boost in dB (e.g., `3`)
+- `--treble-freq`: treble center frequency in Hz (e.g., `5000`)
+- `--speed`: speed up 2x (`on` or `off`)
+- `--sox-quiet`: silence SoX warnings (`on` or `off`)
+- `--verbose`: verbose output (`on` or `off`)
+- `--export-mod`: export MOD container (`on` or `off`)
 - `--clean`: delete output folder before converting
 
 ## Notes

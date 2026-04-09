@@ -56,6 +56,14 @@ def main():
                         help="Delete existing output files before chopping")
     parser.add_argument("--threshold", dest="threshold",
                         help="Silence threshold dB (e.g. -40)")
+    parser.add_argument("--min-sil", dest="min_sil",
+                        help="Minimum silence length in seconds (e.g. 0.05)")
+    parser.add_argument("--keep-sil", dest="keep_sil", choices=["on", "off"],
+                        help="Keep trailing silence on slices (on/off)")
+    parser.add_argument("--verbose", dest="verbose", choices=["on", "off"],
+                        help="Verbose SoX output (on/off)")
+    parser.add_argument("--remove-empty", dest="remove_empty", choices=["on", "off"],
+                        help="Remove empty slices (on/off)")
     args, _ = parser.parse_known_args()
 
     check_sox()
@@ -109,16 +117,29 @@ def main():
         min_sil = "0.05"
         keep_sil = False
     else:
-        thresh = ask_choice("Silence threshold (dB):",
-            {"1":"-30","2":"-40","3":"-50","4":"-60"},
-            default_key="2")
-        min_sil = ask_choice("Minimum silence length (sec):",
-            {"1":"0.05","2":"0.1","3":"0.2","4":"0.5"},
-            default_key="1")
-        keep_sil = ask_yes_no("Keep the silence at the end of each chop?", default_yes=False)
+        if args.threshold:
+            thresh = args.threshold
+        else:
+            thresh = ask_choice("Silence threshold (dB):",
+                {"1":"-30","2":"-40","3":"-50","4":"-60"},
+                default_key="2")
+        if args.min_sil:
+            min_sil = args.min_sil
+        else:
+            min_sil = ask_choice("Minimum silence length (sec):",
+                {"1":"0.05","2":"0.1","3":"0.2","4":"0.5"},
+                default_key="1")
+        if args.keep_sil:
+            keep_sil = (args.keep_sil == "on")
+        else:
+            keep_sil = ask_yes_no("Keep the silence at the end of each chop?", default_yes=False)
 
     if args.threshold:
         thresh = args.threshold
+    if args.min_sil:
+        min_sil = args.min_sil
+    if args.keep_sil:
+        keep_sil = (args.keep_sil == "on")
 
     default_prefix = "chop"
     prefix_prompt = f"Output name prefix [{default_prefix}]: "
@@ -136,8 +157,19 @@ def main():
         verbose = False
         cleanup = True
     else:
-        verbose = ask_yes_no("Verbose SoX output?", default_yes=False)
-        cleanup = ask_yes_no("Remove empty slices?", default_yes=True)
+        if args.verbose:
+            verbose = (args.verbose == "on")
+        else:
+            verbose = ask_yes_no("Verbose SoX output?", default_yes=False)
+        if args.remove_empty:
+            cleanup = (args.remove_empty == "on")
+        else:
+            cleanup = ask_yes_no("Remove empty slices?", default_yes=True)
+
+    if args.verbose:
+        verbose = (args.verbose == "on")
+    if args.remove_empty:
+        cleanup = (args.remove_empty == "on")
 
     silence_args = ["silence"]
     if keep_sil:
