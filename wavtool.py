@@ -19,6 +19,14 @@ def main():
     parser.add_argument("--clean", action="store_true",
                         help="Delete existing output files in chop/convert folders")
     parser.add_argument("--threshold", dest="threshold", help="Chop silence threshold (dB, e.g. -40)")
+    parser.add_argument("--min-sil", dest="min_sil",
+                        help="Minimum silence length for chopping (e.g. 0.05)")
+    parser.add_argument("--keep-sil", dest="keep_sil", choices=["on", "off"],
+                        help="Keep trailing silence on chops (on/off)")
+    parser.add_argument("--chop-verbose", dest="chop_verbose", choices=["on", "off"],
+                        help="Verbose SoX output for chopping (on/off)")
+    parser.add_argument("--remove-empty", dest="remove_empty", choices=["on", "off"],
+                        help="Remove empty chopped slices (on/off)")
     parser.add_argument("--loops", dest="loops", choices=["on", "off"],
                         help="Loop-point detection for MOD export (on/off)")
     parser.add_argument("--rate", dest="rate", help="Sample rate for conversion (e.g. 16574)")
@@ -48,6 +56,10 @@ def main():
                         help="Verbose output for conversion")
     parser.add_argument("--export-mod", dest="export_mod", choices=["on", "off"],
                         help="Export MOD container")
+    parser.add_argument("--report-peak", dest="report_peak", choices=["on", "off"],
+                        help="Report peak level of converted WAVs (on/off)")
+    parser.add_argument("--silent", action="store_true",
+                        help="Suppress output (print only Done. at end)")
     args, _ = parser.parse_known_args()
 
     chop_out = args.chop_out if args.chop_out else "chopped"
@@ -61,9 +73,19 @@ def main():
         chop_cmd += ["--prefix", args.prefix]
     if args.threshold:
         chop_cmd += ["--threshold", args.threshold]
+    if args.min_sil:
+        chop_cmd += ["--min-sil", args.min_sil]
+    if args.keep_sil:
+        chop_cmd += ["--keep-sil", args.keep_sil]
+    if args.chop_verbose:
+        chop_cmd += ["--verbose", args.chop_verbose]
+    if args.remove_empty:
+        chop_cmd += ["--remove-empty", args.remove_empty]
+    if args.silent:
+        chop_cmd += ["--silent"]
     if args.clean:
         chop_cmd += ["--clean"]
-    run(chop_cmd)
+    run(chop_cmd) if not args.silent else subprocess.run(chop_cmd, check=True)
 
     # 2) Convert chopped -> converted using preset without prompts
     conv_cmd = [sys.executable, "wav2mod.py", "-i", chop_out, "-o", convert_out, "-p"]
@@ -101,9 +123,16 @@ def main():
         conv_cmd += ["--verbose", args.verbose]
     if args.export_mod:
         conv_cmd += ["--export-mod", args.export_mod]
+    if args.report_peak:
+        conv_cmd += ["--report-peak", args.report_peak]
+    if args.silent:
+        conv_cmd += ["--silent"]
     if args.clean:
         conv_cmd += ["--clean"]
-    run(conv_cmd)
+    run(conv_cmd) if not args.silent else subprocess.run(conv_cmd, check=True)
+
+    if args.silent:
+        print("All done.")
 
 
 if __name__ == "__main__":

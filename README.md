@@ -42,6 +42,10 @@ Flags:
 - `--chop-out`: output folder for chopped files (default `chopped`)
 - `--convert-out`: output folder for converted files (default `converted`)
 - `--threshold`: silence threshold in dB for chopping (e.g., `-40`)
+- `--min-sil`: minimum silence length for chopping (e.g., `0.05`)
+- `--keep-sil`: keep trailing silence on chops (`on` or `off`)
+- `--chop-verbose`: verbose SoX output for chopping (`on` or `off`)
+- `--remove-empty`: remove empty chopped slices (`on` or `off`)
 - `--loops`: loop-point detection for MOD export (`on` or `off`)
 - `--rate`: sample rate for conversion (e.g., `16574`)
 - `--bits`: bit depth for conversion (`8` or `16`)
@@ -59,6 +63,8 @@ Flags:
 - `--sox-quiet`: silence SoX warnings for conversion (`on` or `off`)
 - `--verbose`: verbose output for conversion (`on` or `off`)
 - `--export-mod`: export MOD container (`on` or `off`)
+- `--report-peak`: report peak level of converted WAVs (`on` or `off`)
+- `--silent`: suppress output (print only Done.)
 - `--clean`: delete output folders before running
 
 ## wavchop.py
@@ -68,7 +74,7 @@ Default behavior:
 - Finds the first `.wav` in the current folder if no input is provided
 - Output folder defaults to `chopped`
 - Output name prefix defaults to `chop`
-- Silence threshold default: `-30 dB`
+- Silence threshold default: `-40 dB`
 - Minimum silence length default: `0.05 s`
 
 Examples:
@@ -87,6 +93,7 @@ Flags:
 - `--keep-sil`: keep trailing silence (`on` or `off`)
 - `--verbose`: verbose SoX output (`on` or `off`)
 - `--remove-empty`: remove empty slices (`on` or `off`)
+- `--silent`: suppress output (print only Done.)
 - `-p/--preset`: use defaults and skip prompts
 - `--clean`: delete output folder before slicing
 
@@ -133,6 +140,8 @@ Flags:
 - `--sox-quiet`: silence SoX warnings (`on` or `off`)
 - `--verbose`: verbose output (`on` or `off`)
 - `--export-mod`: export MOD container (`on` or `off`)
+- `--report-peak`: report peak level of converted WAVs (`on` or `off`)
+- `--silent`: suppress output (print only Done.)
 - `--clean`: delete output folder before converting
 
 ## Notes

@@ -64,11 +64,17 @@ def main():
                         help="Verbose SoX output (on/off)")
     parser.add_argument("--remove-empty", dest="remove_empty", choices=["on", "off"],
                         help="Remove empty slices (on/off)")
+    parser.add_argument("--silent", action="store_true",
+                        help="Suppress output (print only Done.)")
     args, _ = parser.parse_known_args()
 
     check_sox()
-    print("=== WAVCHOP v1 ===\n")
-    print("Tip: Place your input .wav in this folder or enter a full path.\n")
+    def say(msg):
+        if not args.silent:
+            print(msg)
+
+    say("=== WAVCHOP v1 ===\n")
+    say("Tip: Place your input .wav in this folder or enter a full path.\n")
 
     default_inp = ""
     for f in os.listdir("."):
@@ -190,7 +196,8 @@ def main():
         pattern
     ] + silence_args
 
-    print("\nCMD:", " ".join(cmd))
+    if not args.silent:
+        print("\nCMD:", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
     # List outputs for debugging
@@ -202,12 +209,13 @@ def main():
                 created.append((f, os.path.getsize(p)))
             except Exception:
                 pass
-    if created:
-        print("\nCreated slices:")
-        for f, sz in sorted(created):
-            print(f"  {f} ({sz} bytes)")
-    else:
-        print("\nNo slices created.")
+    if not args.silent:
+        if created:
+            print("\nCreated slices:")
+            for f, sz in sorted(created):
+                print(f"  {f} ({sz} bytes)")
+        else:
+            print("\nNo slices created.")
 
     if cleanup:
         # Remove empty/zero-length outputs by file size only.
@@ -224,9 +232,12 @@ def main():
             except Exception:
                 pass
 
-        if removed:
+        if removed and not args.silent:
             print(f"\nRemoved {removed} empty slice(s).")
-    print("\nDONE.")
+    if args.silent:
+        print("Chop done.")
+    else:
+        print("\nDONE.")
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import re
 import wave
 import struct
 import argparse
+import math
 
 
 # ----------------------------
@@ -258,26 +259,6 @@ def run_sox(in_path, out_path, cfg):
             fx += ["remix", "2"]
 
         # ----------------------------
-        # normalization / gain
-        # ----------------------------
-        if cfg.get("normalize"):
-            fx += ["gain", "-n"]
-        elif cfg.get("gain_db") is not None:
-            fx += ["gain", str(cfg["gain_db"])]
-
-        # ----------------------------
-        # high-frequency boost
-        # ----------------------------
-        if cfg.get("treble_boost"):
-            fx += ["treble", str(cfg["treble_gain_db"]), str(cfg["treble_freq_hz"])]
-
-        # ----------------------------
-        # speed change (pitch + time)
-        # ----------------------------
-        if cfg.get("speed_up_2x"):
-            fx += ["speed", "2.0"]
-
-        # ----------------------------
         # anti-click fade
         # ----------------------------
         fade_map = {
@@ -306,6 +287,26 @@ def run_sox(in_path, out_path, cfg):
                 fx += ["silence", "1", str(min_sil), f"{thresh}d", "reverse",
                        "silence", "1", str(min_sil), f"{thresh}d", "reverse"]
 
+        # ----------------------------
+        # speed change (pitch + time)
+        # ----------------------------
+        if cfg.get("speed_up_2x"):
+            fx += ["speed", "2.0"]
+
+        # ----------------------------
+        # high-frequency boost
+        # ----------------------------
+        if cfg.get("treble_boost"):
+            fx += ["treble", str(cfg["treble_gain_db"]), str(cfg["treble_freq_hz"])]
+
+        # ----------------------------
+        # normalization / gain (after trim)
+        # ----------------------------
+        if cfg.get("normalize"):
+            fx += ["gain", "-n"]
+        elif cfg.get("gain_db") is not None:
+            fx += ["gain", str(cfg["gain_db"])]
+
         return fx
 
     def run_cmd(fx):
@@ -320,7 +321,7 @@ def run_sox(in_path, out_path, cfg):
             out_path
         ] + fx
 
-        if cfg["verbose"]:
+        if cfg["verbose"] and not cfg.get("silent"):
             print("CMD:", " ".join(cmd))
 
         subprocess.run(cmd, check=True)
@@ -337,6 +338,39 @@ def run_sox(in_path, out_path, cfg):
             run_cmd(fx)
     except Exception:
         pass
+
+
+def report_peak_dbfs(path, label):
+    try:
+        res = subprocess.run(
+            ["sox", path, "-n", "stat"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+    except Exception:
+        return
+
+    max_amp = None
+    for line in res.stderr.splitlines():
+        line = line.strip()
+        if line.startswith("Maximum amplitude:"):
+            try:
+                max_amp = float(line.split(":")[1].strip())
+            except Exception:
+                max_amp = None
+            break
+
+    if max_amp is None:
+        return
+
+    if max_amp <= 0:
+        peak_db = "-inf"
+    else:
+        peak_db = f"{20.0 * math.log10(max_amp):.2f} dBFS"
+
+    print(f"PEAK: {label} = {peak_db}")
 
 
 # ----------------------------
@@ -396,11 +430,19 @@ def main():
                         help="Verbose output (on/off)")
     parser.add_argument("--export-mod", dest="export_mod", choices=["on", "off"],
                         help="Export MOD sample container (on/off)")
+    parser.add_argument("--report-peak", dest="report_peak", choices=["on", "off"],
+                        help="Report peak level of converted WAVs (on/off)")
+    parser.add_argument("--silent", action="store_true",
+                        help="Suppress output (print only Done.)")
     args, _ = parser.parse_known_args()
 
     check_sox()
 
-    print("=== WAV2MOD v6 FIXED ===\n")
+    def say(msg):
+        if not args.silent:
+            print(msg)
+
+    say("=== WAV2MOD v6 FIXED ===\n")
 
     if args.input_path:
         inp = args.input_path
@@ -457,9 +499,11 @@ def main():
             "speed_up_2x": True,
             "loop_find": True,
             "sox_quiet": True,
-            "verbose": False
+            "verbose": False,
+            "silent": args.silent,
+            "report_peak": False
         }
-        print("\nPROTRACKER PRESET ACTIVE")
+        say("\nPROTRACKER PRESET ACTIVE")
 
     else:
         if args.rate:
@@ -582,7 +626,9 @@ def main():
             "speed_up_2x": speed_up_2x,
             "loop_find": loop_find,
             "sox_quiet": (args.sox_quiet == "on") if args.sox_quiet else ask_yes_no("Silence SoX warnings?", default_yes=True),
-            "verbose": (args.verbose == "on") if args.verbose else ask_yes_no("Verbose output?", default_yes=False)
+            "verbose": (args.verbose == "on") if args.verbose else ask_yes_no("Verbose output?", default_yes=False),
+            "silent": args.silent,
+            "report_peak": (args.report_peak == "on") if args.report_peak else False
         }
 
     # Apply overrides in preset mode (or if flags provided)
@@ -618,6 +664,8 @@ def main():
         cfg["sox_quiet"] = (args.sox_quiet == "on")
     if args.verbose:
         cfg["verbose"] = (args.verbose == "on")
+    if args.report_peak:
+        cfg["report_peak"] = (args.report_peak == "on")
 
     if args.loops:
         cfg["loop_find"] = (args.loops == "on")
@@ -631,12 +679,12 @@ def main():
 
     mod_samples = []
 
-    print("\n--- PROCESSING ---\n")
+    say("\n--- PROCESSING ---\n")
 
     files = [f for f in os.listdir(inp) if f.lower().endswith(".wav")]
 
     if not files:
-        print("No WAV files found.")
+        say("No WAV files found.")
         return
 
     for f in files:
@@ -646,7 +694,9 @@ def main():
 
         try:
             run_sox(in_path, out_path, cfg)
-            print("OK:", name)
+            say(f"OK: {name}")
+            if cfg.get("report_peak") and not cfg.get("silent"):
+                report_peak_dbfs(out_path, name)
 
             if export_mod:
                 try:
@@ -660,17 +710,20 @@ def main():
                         **sample
                     })
                 except Exception as e:
-                    print("MOD SKIP:", name, "-", e)
+                    say(f"MOD SKIP: {name} - {e}")
 
         except subprocess.CalledProcessError:
-            print("FAIL:", name)
+            say(f"FAIL: {name}")
 
     if export_mod:
         mod_path = os.path.join(out, "sample_pack.mod")
         write_mod(mod_path, mod_samples)
-        print("\nMOD CREATED:", mod_path)
+        say(f"\nMOD CREATED: {mod_path}")
 
-    print("\nDONE.")
+    if args.silent:
+        print("Conversion done.")
+    else:
+        print("\nDONE.")
 
 
 if __name__ == "__main__":
