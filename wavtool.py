@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--prefix", dest="prefix", help="Chop output prefix")
     parser.add_argument("-i", "--input", dest="input_path", help="Input file for chopping")
     parser.add_argument("--chop-out", dest="chop_out", help="Chop output folder")
-    parser.add_argument("--convert-out", dest="convert_out", help="Converted output folder")
+    parser.add_argument("-o", "--output", dest="convert_out", help="Converted output folder")
     parser.add_argument("--clean", action="store_true",
                         help="Delete existing output files in chop/convert folders")
     parser.add_argument("--threshold", dest="threshold", help="Chop silence threshold (dB, e.g. -40)")

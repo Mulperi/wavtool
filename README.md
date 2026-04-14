@@ -37,14 +37,16 @@ Runs:
 2. `wav2mod.py` (ProTracker preset, no prompts)
 
 Flags (wavtool-specific):
-- `-i/--input`: input file for chopping
 - `--prefix`: output name prefix for chops (e.g., `drums-1.wav`)
 - `--chop-out`: output folder for chopped files (default `chopped`)
-- `--convert-out`: output folder for converted files (default `converted`)
+- `-o/--output`: output folder for converted files (default `converted`)
 - `--clean`: delete output folders before running
 - `--silent`: suppress output (print only Done.)
 
 Forwarded to `wavchop.py`:
+- `-i/--input`
+- `--prefix`
+- `--chop-out`
 - `--threshold`
 - `--min-sil`
 - `--keep-sil`
@@ -54,6 +56,7 @@ Forwarded to `wavchop.py`:
 Forwarded to `wav2mod.py`:
 - `--loops`
 - `--raw-pack`
+- `-o/--output`
 - `--rate`
 - `--bits`
 - `--mono`
@@ -74,6 +77,8 @@ Forwarded to `wav2mod.py`:
 
 ## wavchop.py
 Auto-slices based on silence detection.
+
+Supports `-i/--input` and `-o/--output` directly.
 
 Default behavior:
 - Finds the first `.wav` in the current folder if no input is provided
@@ -123,6 +128,7 @@ Examples:
 python3 wav2mod.py
 python3 wav2mod.py -i chopped -o converted -p --clean
 python3 wav2mod.py --raw-pack -i bestsamples
+python3 wav2mod.py -i input_folder -o converted -p --export-mod off
 ```
 
 Flags:
@@ -156,4 +162,4 @@ Flags:
 - PT2/ProTracker playback does not store sample rate; pitch depends on the note you play.
 - Tip: If your samples have long decays, try lowering the chop threshold (e.g., `--threshold -50`) to avoid cutting tails too early.
 - Tip: If you are chopping a file with fast drum hits and you have problem separating each hit, try settings: `python3 wavtool.py --clean --threshold -25 --min-sil 0.01`
-- Tip: Use `--raw-pack` when your input WAVs are already mono 8-bit and you only want a MOD pack (no conversion).
+- Tip: Use `python3 wav2mod.py -i mysamples --raw-pack` when your input WAVs are already mono 8-bit and you only want a MOD pack (no conversion).
